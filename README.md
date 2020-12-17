@@ -1,4 +1,4 @@
-# ChairGame
+# Dança das Cadeiras
 Projeto para matéria de Sistemas Operacionais (SSC0140) para o curso de Ciências de Computação da USP São Carlos.
 
 O sistema implementa os conceitos de semáforos e threads numa simulação do jogo da cadeira. 

@@ -21,13 +21,15 @@ sem_t mutex;
 
 int j;
 int quantidade_de_cadeiras;
+int entrada;
 
 void *jogar(void *id) {
     int *n_jogador = (int *) id;
     
     /*!< Definição de um tempo de sleep() aleatório de forma que o vencedor seja variável */
     /*!< Assim, a thread1 não será sempre a primeira a entrar na região critica */
-    int tmp = (rand() % 3); /*!< A entrada da thread é entre entre 0 a 2 segundos */
+   
+    int tmp = (rand() % 3); /*!< A entrada da thread é entre 0 a 2 segundos */
     sleep(tmp);
 
     /*!< Regiao critica para controlar o acesso a variavel quantidade_de_cadeiras */
@@ -55,12 +57,14 @@ void *jogar(void *id) {
 void *jogador(void *id) {
     int *n_jogador = (int *) id;
     
-    //fflush(stdin); //setbuf(stdin, NULL);
+    // fflush(stdin); 
+    setbuf(stdin, NULL);
     // char c;
     // while ((c = getchar()) != '\n' && c != EOF) {}
-
-    char response;
-    scanf("%c", &response);
+    int response;
+    scanf("%d", &response);
+    
+    printf("response = %d\n", response);
     
     /*!< Regiao critica para controlar o acesso a variavel quantidade_de_cadeiras */
     sem_wait(&mutex);
@@ -108,16 +112,16 @@ int main(void) {
     for(j = 0; j < QUANTIDADE_DE_RODADAS; j++) { 
         printf("Aguarde o inicio da rodada %d...\n", j+1);
         
+
         int tmp = (rand() % 5) + 5; /*!< A partida pode iniciar entre 5 a 9 segundos */
         sleep(tmp);
-    
-        fflush(stdin);
         printf("DIGITE PARA SENTAR!\n");
+
         /*!< O numero de cadeiras eh sempre menor que o de jogadores */
         quantidade_de_cadeiras = (QUANTIDADE_DE_JOGADORES-1)-j;
 
         // setbuf(stdin, NULL);
-        
+       
         pthread_create(&jogadores[0], NULL, jogador, &n_dos_jogadores[0]);
         
         /*!< Os jogadores sao representados por threads e devem acessar as cadeiras (regiao critica) */
@@ -134,9 +138,3 @@ int main(void) {
 
     return 0;
 }
-
-/*
-    for (int vetor : variavel) {
-
-    }
-*/
