@@ -21,15 +21,16 @@ sem_t mutex;
 
 int j;
 int quantidade_de_cadeiras;
-int entrada;
+char entrada;
+char letra;
 
 void *jogar(void *id) {
     int *n_jogador = (int *) id;
     
     /*!< Definição de um tempo de sleep() aleatório de forma que o vencedor seja variável */
-    /*!< Assim, a thread1 não será sempre a primeira a entrar na região critica */
+    /*!< Assim, a thread inicial não será sempre a primeira a entrar na região critica */
    
-    int tmp = (rand() % 3); /*!< A entrada da thread é entre 0 a 2 segundos */
+    int tmp = (rand() % 2) + 1; /*!< A entrada da thread é entre 1 a 2 segundos */
     sleep(tmp);
 
     /*!< Regiao critica para controlar o acesso a variavel quantidade_de_cadeiras */
@@ -41,11 +42,10 @@ void *jogar(void *id) {
         quantidade_de_cadeiras--;
     } else {
         /*!< Caso contrario, ele ficou de fora e nao conseguiu sentar */
-        
-        int i;
-        /*!< Eliminar o jogador da lista de participantes ainda ativos */
         printf("    O jogador %d foi desclassificado!\n", *n_jogador);
 
+        /*!< Eliminar o jogador da lista de participantes ainda ativos */
+        int i;
         for (i = 0; i < QUANTIDADE_DE_JOGADORES-j; i++) 
             if (n_dos_jogadores[i] == (*n_jogador)) break;
         n_dos_jogadores.erase(n_dos_jogadores.begin() + i);
@@ -57,14 +57,9 @@ void *jogar(void *id) {
 void *jogador(void *id) {
     int *n_jogador = (int *) id;
     
-    // fflush(stdin); 
-    setbuf(stdin, NULL);
-    // char c;
-    // while ((c = getchar()) != '\n' && c != EOF) {}
-    int response;
-    scanf("%d", &response);
-    
-    printf("response = %d\n", response);
+    scanf("%c", &entrada);
+    while (entrada != letra)
+        scanf("%c", &entrada);
     
     /*!< Regiao critica para controlar o acesso a variavel quantidade_de_cadeiras */
     sem_wait(&mutex);
@@ -75,6 +70,8 @@ void *jogador(void *id) {
         quantidade_de_cadeiras--;
     } else {
         /*!< Caso contrario, ele ficou de fora e nao conseguiu sentar -> Finalizar o jogo */
+
+        printf("\n\n********** O JOGO FINALIZOU **********\n");
         printf("Você foi desclassificado!\n");
         exit(0);
     }
@@ -82,23 +79,28 @@ void *jogador(void *id) {
     sem_post(&mutex);
 }
 
-int main(void) {
-    /* initialize random seed: */
-    srand (time(NULL));
-
-    pthread_t jogadores[QUANTIDADE_DE_JOGADORES];
+void imprimir_menu() {
+    char iniciar;
 
     printf("Boas-vindas a danca das cadeiras\n");
     printf("*********** INSTRUCOES ***********\n");
-    printf("1) A cada rodada voce devera sentar em uma cadeira, para tal, pressione qualquer botao + ENTER\n");
-    printf("2) Aquele que nao sentar, ou seja, ficar em pe, sera desclassificado. SEJA O MAIS VELOZ!\n");
-    printf("3) Serao 5 rounds e voce ira competir contra o computador\n");
-    printf("4) Para vencer voce nao pode ser o ultimo a sentar em cada uma das rodadas\n");
-    printf("Digite qualquer tecla para iniciar\n");
+    printf("1) O jogo consiste de 5 rodadas\n");
+    printf("2) Sao 5 jogadores incluso voce\n");
+    printf("3) O ultimo jogador a sentar na rodada perde, ou seja, a cada rodada um jogador sera eliminado\n");
+    printf("4) Uma mensagem de aviso de comeco de rodada sera enviado e a partir disto a rodada pode ter inicio em um tempo aleatorio entre 5 a 9 segundos\n");
+    printf("5) A cada rodada sera informado uma letra aleatoria que voce deve clicar seguido do ENTER para sentar\n");
+
     printf("**********************************\n");
-    
-    char response;
-    scanf("%c", &response);
+    printf("Digite qualquer tecla para iniciar\n");
+    scanf("%c", &iniciar);
+    printf("**********************************\n");
+}
+
+int main(void) {
+    pthread_t jogadores[QUANTIDADE_DE_JOGADORES];
+
+    /*!< Inicializando a seed de aleatorio */
+    srand (time(NULL));
 
     /*!< Inicializando id dos jogadores */
     for (int i = 0; i < QUANTIDADE_DE_JOGADORES; i++)
@@ -106,34 +108,36 @@ int main(void) {
 
     sem_init(&mutex, 0, 1);
 
-    printf("*********** O JOGO INICIOU ***********\n");
+    imprimir_menu();
 
     /*!< Rodadas */
     for(j = 0; j < QUANTIDADE_DE_RODADAS; j++) { 
-        printf("Aguarde o inicio da rodada %d...\n", j+1);
+        printf("\nAguarde o inicio da rodada %d...\n", j+1);
         
-
         int tmp = (rand() % 5) + 5; /*!< A partida pode iniciar entre 5 a 9 segundos */
         sleep(tmp);
-        printf("DIGITE PARA SENTAR!\n");
+
+        /*!< Criando letra aleatoria para ser a entrada do usuario */
+        letra = 97 + rand() % 25;
+        printf("DIGITE '%c' PARA SENTAR!\n", letra);
 
         /*!< O numero de cadeiras eh sempre menor que o de jogadores */
         quantidade_de_cadeiras = (QUANTIDADE_DE_JOGADORES-1)-j;
 
-        // setbuf(stdin, NULL);
-       
+        /*!< Criando a thread responsavel pelo jogador */
         pthread_create(&jogadores[0], NULL, jogador, &n_dos_jogadores[0]);
         
         /*!< Os jogadores sao representados por threads e devem acessar as cadeiras (regiao critica) */
         for(int i = 1; i < QUANTIDADE_DE_JOGADORES-j; i++)
             pthread_create(&jogadores[i], NULL, jogar, &n_dos_jogadores[i]);
 
+        /*!< Aguardando as threads terminarem a execucao */
         for(int i = 0; i < QUANTIDADE_DE_JOGADORES-j; i++)
             pthread_join(jogadores[i], NULL);
 
     }
     
-    printf("********** O JOGO FINALIZOU **********\n");
+    printf("\n\n********** O JOGO FINALIZOU **********\n");
     printf("Voce venceu!\n");
 
     return 0;
